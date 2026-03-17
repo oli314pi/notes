@@ -1,83 +1,171 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <title>My Auckland Notes</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Cloud Notes</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    
     <style>
-        body { font-family: sans-serif; max-width: 600px; margin: 40px auto; padding: 20px; line-height: 1.6; }
-        textarea { width: 100%; height: 100px; margin-bottom: 10px; border-radius: 8px; border: 1px solid #ccc; padding: 10px; }
-        button { background: #007bff; color: white; border: none; padding: 10px 20px; border-radius: 5px; cursor: pointer; }
-        .note { background: #f4f4f4; padding: 15px; border-radius: 8px; margin-top: 15px; position: relative; }
-        .delete-btn { color: red; cursor: pointer; float: right; }
+        :root {
+            --primary: #007bff;
+            --bg: #f8f9fa;
+            --text: #333;
+        }
+
+        body { 
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
+            max-width: 700px; 
+            margin: 0 auto; 
+            padding: 40px 20px; 
+            background-color: var(--bg);
+            color: var(--text);
+            line-height: 1.6;
+        }
+
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+
+        .input-section {
+            background: white;
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.05);
+            margin-bottom: 30px;
+        }
+
+        textarea { 
+            width: 100%; 
+            height: 120px; 
+            margin-bottom: 15px; 
+            border-radius: 8px; 
+            border: 1px solid #ddd; 
+            padding: 12px; 
+            font-size: 16px;
+            box-sizing: border-box;
+            resize: vertical;
+        }
+
+        button { 
+            background: var(--primary); 
+            color: white; 
+            border: none; 
+            padding: 12px 24px; 
+            border-radius: 6px; 
+            cursor: pointer; 
+            font-weight: bold;
+            transition: opacity 0.2s;
+        }
+
+        button:hover { opacity: 0.8; }
+
+        .note { 
+            background: white; 
+            padding: 20px; 
+            border-radius: 10px; 
+            margin-top: 15px; 
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+            border-left: 5px solid var(--primary);
+            position: relative;
+        }
+
+        .delete-btn { 
+            color: #ff4d4d; 
+            cursor: pointer; 
+            float: right; 
+            font-size: 0.9rem;
+            font-weight: bold;
+        }
+
+        .delete-btn:hover { text-decoration: underline; }
+
+        p { margin: 0; white-space: pre-wrap; }
     </style>
 </head>
 <body>
 
     <h2>Digital Notepad</h2>
-    <textarea id="noteInput" placeholder="Write something..."></textarea>
-    <button onclick="saveNote()">Save Note</button>
-
-    <div id="notesContainer"></div>
-
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-
-<script>
-    // 1. REPLACE THESE WITH YOUR ACTUAL CREDENTIALS FROM SUPABASE
-    const SUPABASE_URL = 'https://your-project-url.supabase.co';
-    const SUPABASE_KEY = 'your-anon-key-here';
     
-    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    <div class="input-section">
+        <textarea id="noteInput" placeholder="What's on your mind?"></textarea>
+        <button id="saveBtn" onclick="saveNote()">Save to Cloud</button>
+    </div>
 
-    document.addEventListener('DOMContentLoaded', loadNotes);
+    <div id="notesContainer">
+        </div>
 
-    async function saveNote() {
-        const input = document.getElementById('noteInput');
-        if (!input.value) return;
-
-        // Save to the cloud instead of local storage
-        const { error } = await supabase
-            .from('notes')
-            .insert([{ content: input.value }]);
-
-        if (error) {
-            console.error('Error saving:', error);
-        } else {
-            input.value = '';
-            loadNotes();
-        }
-    }
-
-    async function loadNotes() {
-        const container = document.getElementById('notesContainer');
+    <script>
+        // Configuration with your provided credentials
+        const SUPABASE_URL = 'https://cqwuhjhjlwwrgxvdlxjq.supabase.co';
+        const SUPABASE_KEY = 'sb_publishable_41eLBGWM-kaeI6B2d3Q88w_imz0fXWW';
         
-        // Fetch from the cloud
-        const { data: notes, error } = await supabase
-            .from('notes')
-            .select('*')
-            .order('created_at', { ascending: false });
+        const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-        if (error) {
-            console.error('Error loading:', error);
-            return;
+        document.addEventListener('DOMContentLoaded', loadNotes);
+
+        async function saveNote() {
+            const input = document.getElementById('noteInput');
+            const btn = document.getElementById('saveBtn');
+            
+            if (!input.value.trim()) return;
+
+            btn.disabled = true;
+            btn.innerText = 'Saving...';
+
+            const { error } = await _supabase
+                .from('notes')
+                .insert([{ content: input.value }]);
+
+            if (error) {
+                alert('Error saving note: ' + error.message);
+            } else {
+                input.value = '';
+                await loadNotes();
+            }
+
+            btn.disabled = false;
+            btn.innerText = 'Save to Cloud';
         }
 
-        container.innerHTML = notes.map(note => `
-            <div class="note">
-                <span class="delete-btn" onclick="deleteNote('${note.id}')">Delete</span>
-                <p>${note.content}</p>
-            </div>
-        `).join('');
-    }
+        async function loadNotes() {
+            const container = document.getElementById('notesContainer');
+            
+            const { data: notes, error } = await _supabase
+                .from('notes')
+                .select('*')
+                .order('created_at', { ascending: false });
 
-    async function deleteNote(id) {
-        const { error } = await supabase
-            .from('notes')
-            .delete()
-            .eq('id', id);
+            if (error) {
+                container.innerHTML = `<p style="color:red">Error loading notes: ${error.message}</p>`;
+                return;
+            }
 
-        if (error) console.error('Error deleting:', error);
-        else loadNotes();
-    }
-</script>
-   
+            if (notes.length === 0) {
+                container.innerHTML = '<p style="color:#888; text-align:center;">No notes found yet.</p>';
+                return;
+            }
+
+            container.innerHTML = notes.map(note => `
+                <div class="note">
+                    <span class="delete-btn" onclick="deleteNote('${note.id}')">Delete</span>
+                    <p>${note.content}</p>
+                </div>
+            `).join('');
+        }
+
+        async function deleteNote(id) {
+            if (!confirm('Are you sure you want to delete this note?')) return;
+
+            const { error } = await _supabase
+                .from('notes')
+                .delete()
+                .eq('id', id);
+
+            if (error) {
+                alert('Error deleting: ' + error.message);
+            } else {
+                loadNotes();
+            }
+        }
+    </script>
 </body>
 </html>
