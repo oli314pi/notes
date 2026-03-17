@@ -9,28 +9,30 @@
     <style>
         :root {
             --primary: #007bff;
+            --secondary: #6c757d;
             --bg: #f8f9fa;
             --text: #333;
+            --white: #ffffff;
         }
 
         body { 
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; 
             max-width: 700px; 
             margin: 0 auto; 
-            padding: 40px 20px; 
+            padding: 20px; 
             background-color: var(--bg);
             color: var(--text);
             line-height: 1.6;
         }
 
-        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; }
+        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-top: 0; }
 
-        .input-section {
-            background: white;
+        .card {
+            background: var(--white);
             padding: 20px;
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
-            margin-bottom: 30px;
+            margin-bottom: 20px;
         }
 
         textarea { 
@@ -45,6 +47,17 @@
             resize: vertical;
         }
 
+        input[type="text"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 15px;
+            border-radius: 6px;
+            border: 1px solid #ddd;
+            box-sizing: border-box;
+        }
+
+        .btn-group { display: flex; gap: 10px; }
+
         button { 
             background: var(--primary); 
             color: white; 
@@ -53,52 +66,64 @@
             border-radius: 6px; 
             cursor: pointer; 
             font-weight: bold;
-            transition: opacity 0.2s;
+            flex-grow: 1;
         }
 
-        button:hover { opacity: 0.8; }
+        button:hover { opacity: 0.9; }
+        button:disabled { background: var(--secondary); cursor: not-allowed; }
 
         .note { 
-            background: white; 
+            background: var(--white); 
             padding: 20px; 
             border-radius: 10px; 
             margin-top: 15px; 
             box-shadow: 0 2px 4px rgba(0,0,0,0.05);
             border-left: 5px solid var(--primary);
-            position: relative;
         }
 
-        .delete-btn { 
-            color: #ff4d4d; 
-            cursor: pointer; 
-            float: right; 
-            font-size: 0.9rem;
+        .note-actions {
+            display: flex;
+            justify-content: flex-end;
+            gap: 15px;
+            margin-bottom: 10px;
+        }
+
+        .action-link {
+            font-size: 0.85rem;
+            cursor: pointer;
             font-weight: bold;
+            text-decoration: none;
         }
 
-        .delete-btn:hover { text-decoration: underline; }
+        .copy-link { color: var(--primary); }
+        .delete-link { color: #ff4d4d; }
 
-        p { margin: 0; white-space: pre-wrap; }
+        p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
+        
+        .search-container { margin-top: 20px; }
     </style>
 </head>
 <body>
 
-    <h2>Digital Notepad</h2>
-    
-    <div class="input-section">
+    <div class="card">
+        <h2>New Note</h2>
         <textarea id="noteInput" placeholder="What's on your mind?"></textarea>
         <button id="saveBtn" onclick="saveNote()">Save to Cloud</button>
+    </div>
+
+    <div class="search-container">
+        <input type="text" id="searchInput" placeholder="Search your notes..." onkeyup="filterNotes()">
     </div>
 
     <div id="notesContainer">
         </div>
 
     <script>
-        // Configuration with your provided credentials
         const SUPABASE_URL = 'https://cqwuhjhjlwwrgxvdlxjq.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_41eLBGWM-kaeI6B2d3Q88w_imz0fXWW';
         
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+        let allNotes = []; // Stores notes locally for fast searching
 
         document.addEventListener('DOMContentLoaded', loadNotes);
 
@@ -116,7 +141,7 @@
                 .insert([{ content: input.value }]);
 
             if (error) {
-                alert('Error saving note: ' + error.message);
+                alert('Error: ' + error.message);
             } else {
                 input.value = '';
                 await loadNotes();
@@ -135,36 +160,60 @@
                 .order('created_at', { ascending: false });
 
             if (error) {
-                container.innerHTML = `<p style="color:red">Error loading notes: ${error.message}</p>`;
+                container.innerHTML = `<p style="color:red">Error: ${error.message}</p>`;
                 return;
             }
 
-            if (notes.length === 0) {
-                container.innerHTML = '<p style="color:#888; text-align:center;">No notes found yet.</p>';
+            allNotes = notes;
+            renderNotes(allNotes);
+        }
+
+        function renderNotes(notesToDisplay) {
+            const container = document.getElementById('notesContainer');
+            
+            if (notesToDisplay.length === 0) {
+                container.innerHTML = '<p style="color:#888; text-align:center;">No notes found.</p>';
                 return;
             }
 
-            container.innerHTML = notes.map(note => `
+            container.innerHTML = notesToDisplay.map(note => `
                 <div class="note">
-                    <span class="delete-btn" onclick="deleteNote('${note.id}')">Delete</span>
+                    <div class="note-actions">
+                        <span class="action-link copy-link" onclick="copyNote(\`${note.content.replace(/`/g, '\\`')}\`)">Copy</span>
+                        <span class="action-link delete-link" onclick="deleteNote('${note.id}')">Delete</span>
+                    </div>
                     <p>${note.content}</p>
                 </div>
             `).join('');
         }
 
+        function filterNotes() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
+            const filtered = allNotes.filter(note => 
+                note.content.toLowerCase().includes(searchTerm)
+            );
+            renderNotes(filtered);
+        }
+
+        async function copyNote(text) {
+            try {
+                await navigator.clipboard.writeText(text);
+                alert('Note copied to clipboard!');
+            } catch (err) {
+                alert('Failed to copy');
+            }
+        }
+
         async function deleteNote(id) {
-            if (!confirm('Are you sure you want to delete this note?')) return;
+            if (!confirm('Delete this note?')) return;
 
             const { error } = await _supabase
                 .from('notes')
                 .delete()
                 .eq('id', id);
 
-            if (error) {
-                alert('Error deleting: ' + error.message);
-            } else {
-                loadNotes();
-            }
+            if (error) alert('Error: ' + error.message);
+            else loadNotes();
         }
     </script>
 </body>
