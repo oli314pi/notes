@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Cloud Notes</title>
+    <title>Notes</title>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     
     <style>
@@ -25,7 +25,12 @@
             line-height: 1.6;
         }
 
-        h2 { border-bottom: 2px solid var(--primary); padding-bottom: 10px; margin-top: 0; }
+        h2 { 
+            border-bottom: 2px solid var(--primary); 
+            padding-bottom: 10px; 
+            margin-top: 0; 
+            margin-bottom: 25px;
+        }
 
         .card {
             background: var(--white);
@@ -33,44 +38,43 @@
             border-radius: 12px;
             box-shadow: 0 4px 6px rgba(0,0,0,0.05);
             margin-bottom: 20px;
+            position: relative;
         }
 
         textarea { 
             width: 100%; 
             height: 120px; 
-            margin-bottom: 15px; 
             border-radius: 8px; 
             border: 1px solid #ddd; 
             padding: 12px; 
             font-size: 16px;
             box-sizing: border-box;
             resize: vertical;
+            display: block;
+            margin-bottom: 10px;
         }
 
-        input[type="text"] {
-            width: 100%;
-            padding: 10px;
-            margin-bottom: 15px;
-            border-radius: 6px;
-            border: 1px solid #ddd;
-            box-sizing: border-box;
+        .save-container {
+            display: flex;
+            justify-content: flex-end;
         }
 
-        .btn-group { display: flex; gap: 10px; }
-
-        button { 
+        button#saveBtn { 
             background: var(--primary); 
             color: white; 
             border: none; 
-            padding: 12px 24px; 
-            border-radius: 6px; 
+            width: 50px;
+            height: 50px;
+            border-radius: 50%; 
             cursor: pointer; 
-            font-weight: bold;
-            flex-grow: 1;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s ease;
         }
 
-        button:hover { opacity: 0.9; }
-        button:disabled { background: var(--secondary); cursor: not-allowed; }
+        button#saveBtn:hover { opacity: 0.9; transform: scale(1.05); }
+        button#saveBtn:disabled { background: var(--secondary); cursor: not-allowed; }
 
         .note { 
             background: var(--white); 
@@ -92,7 +96,6 @@
             font-size: 0.85rem;
             cursor: pointer;
             font-weight: bold;
-            text-decoration: none;
         }
 
         .copy-link { color: var(--primary); }
@@ -100,30 +103,34 @@
 
         p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
         
-        .search-container { margin-top: 20px; }
+        /* Save Icon Styling */
+        .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     </style>
 </head>
 <body>
 
+<!--    <h2>Notes</h2> -->
+
     <div class="card">
-        <h2>New Note</h2>
-        <textarea id="noteInput" placeholder="What's on your mind?"></textarea>
-        <button id="saveBtn" onclick="saveNote()">Save to Cloud</button>
-    </div>
-
-    <div class="search-container">
-        <input type="text" id="searchInput" placeholder="Search your notes..." onkeyup="filterNotes()">
-    </div>
-
-    <div id="notesContainer">
+        <textarea id="noteInput" placeholder="Wake up, Neo"></textarea>
+        <div class="save-container">
+            <button id="saveBtn" onclick="saveNote()" title="Save Note">
+                <svg class="icon" viewBox="0 0 24 24">
+                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"></path>
+                    <polyline points="17 21 17 13 7 13 7 21"></polyline>
+                    <polyline points="7 3 7 8 15 8"></polyline>
+                </svg>
+            </button>
         </div>
+    </div>
+
+    <div id="notesContainer"></div>
 
     <script>
         const SUPABASE_URL = 'https://cqwuhjhjlwwrgxvdlxjq.supabase.co';
         const SUPABASE_KEY = 'sb_publishable_41eLBGWM-kaeI6B2d3Q88w_imz0fXWW';
         
         const _supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
-        let allNotes = []; // Stores notes locally for fast searching
 
         document.addEventListener('DOMContentLoaded', loadNotes);
 
@@ -134,7 +141,6 @@
             if (!input.value.trim()) return;
 
             btn.disabled = true;
-            btn.innerText = 'Saving...';
 
             const { error } = await _supabase
                 .from('notes')
@@ -148,7 +154,6 @@
             }
 
             btn.disabled = false;
-            btn.innerText = 'Save to Cloud';
         }
 
         async function loadNotes() {
@@ -164,8 +169,7 @@
                 return;
             }
 
-            allNotes = notes;
-            renderNotes(allNotes);
+            renderNotes(notes);
         }
 
         function renderNotes(notesToDisplay) {
@@ -185,14 +189,6 @@
                     <p>${note.content}</p>
                 </div>
             `).join('');
-        }
-
-        function filterNotes() {
-            const searchTerm = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allNotes.filter(note => 
-                note.content.toLowerCase().includes(searchTerm)
-            );
-            renderNotes(filtered);
         }
 
         async function copyNote(text) {
