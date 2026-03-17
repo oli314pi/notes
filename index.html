@@ -18,40 +18,66 @@
 
     <div id="notesContainer"></div>
 
-    <script>
-        // Load notes from browser storage on startup
-        document.addEventListener('DOMContentLoaded', displayNotes);
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
-        function saveNote() {
-            const input = document.getElementById('noteInput');
-            if (!input.value) return;
+<script>
+    // 1. REPLACE THESE WITH YOUR ACTUAL CREDENTIALS FROM SUPABASE
+    const SUPABASE_URL = 'https://your-project-url.supabase.co';
+    const SUPABASE_KEY = 'your-anon-key-here';
+    
+    const supabase = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
 
-            const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
-            notes.push({ id: Date.now(), text: input.value });
-            localStorage.setItem('myNotes', JSON.stringify(notes));
-            
+    document.addEventListener('DOMContentLoaded', loadNotes);
+
+    async function saveNote() {
+        const input = document.getElementById('noteInput');
+        if (!input.value) return;
+
+        // Save to the cloud instead of local storage
+        const { error } = await supabase
+            .from('notes')
+            .insert([{ content: input.value }]);
+
+        if (error) {
+            console.error('Error saving:', error);
+        } else {
             input.value = '';
-            displayNotes();
+            loadNotes();
+        }
+    }
+
+    async function loadNotes() {
+        const container = document.getElementById('notesContainer');
+        
+        // Fetch from the cloud
+        const { data: notes, error } = await supabase
+            .from('notes')
+            .select('*')
+            .order('created_at', { ascending: false });
+
+        if (error) {
+            console.error('Error loading:', error);
+            return;
         }
 
-        function displayNotes() {
-            const container = document.getElementById('notesContainer');
-            const notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
-            
-            container.innerHTML = notes.map(note => `
-                <div class="note">
-                    <span class="delete-btn" onclick="deleteNote(${note.id})">Delete</span>
-                    <p>${note.text}</p>
-                </div>
-            `).reverse().join('');
-        }
+        container.innerHTML = notes.map(note => `
+            <div class="note">
+                <span class="delete-btn" onclick="deleteNote('${note.id}')">Delete</span>
+                <p>${note.content}</p>
+            </div>
+        `).join('');
+    }
 
-        function deleteNote(id) {
-            let notes = JSON.parse(localStorage.getItem('myNotes') || '[]');
-            notes = notes.filter(note => note.id !== id);
-            localStorage.setItem('myNotes', JSON.stringify(notes));
-            displayNotes();
-        }
-    </script>
+    async function deleteNote(id) {
+        const { error } = await supabase
+            .from('notes')
+            .delete()
+            .eq('id', id);
+
+        if (error) console.error('Error deleting:', error);
+        else loadNotes();
+    }
+</script>
+   
 </body>
 </html>
