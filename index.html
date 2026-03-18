@@ -25,13 +25,6 @@
             line-height: 1.6;
         }
 
-        h2 { 
-            border-bottom: 2px solid var(--primary); 
-            padding-bottom: 10px; 
-            margin-top: 0; 
-            margin-bottom: 25px;
-        }
-
         .card {
             background: var(--white);
             padding: 20px;
@@ -103,13 +96,34 @@
 
         p { margin: 0; white-space: pre-wrap; word-wrap: break-word; }
         
-        /* Save Icon Styling */
+        /* Toast Notification Styling */
+        #toast {
+            visibility: hidden;
+            min-width: 200px;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            border-radius: 8px;
+            padding: 12px;
+            position: fixed;
+            z-index: 1000;
+            left: 50%;
+            bottom: 30px;
+            transform: translateX(-50%);
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.2s, visibility 0.2s;
+        }
+
+        #toast.show {
+            visibility: visible;
+            opacity: 1;
+        }
+
         .icon { width: 24px; height: 24px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
     </style>
 </head>
 <body>
-
-<!--    <h2>Notes</h2> -->
 
     <div class="card">
         <textarea id="noteInput" placeholder="Wake up, Neo"></textarea>
@@ -125,6 +139,7 @@
     </div>
 
     <div id="notesContainer"></div>
+    <div id="toast">Note copied to clipboard!</div>
 
     <script>
         const SUPABASE_URL = 'https://cqwuhjhjlwwrgxvdlxjq.supabase.co';
@@ -183,7 +198,7 @@
             container.innerHTML = notesToDisplay.map(note => `
                 <div class="note">
                     <div class="note-actions">
-                        <span class="action-link copy-link" onclick="copyNote(\`${note.content.replace(/`/g, '\\`')}\`)">Copy</span>
+                        <span class="action-link copy-link" onclick="copyNote(\`${note.content.replace(/`/g, '\\`').replace(/\$/g, '\\$')}\`)">Copy</span>
                         <span class="action-link delete-link" onclick="deleteNote('${note.id}')">Delete</span>
                     </div>
                     <p>${note.content}</p>
@@ -191,12 +206,21 @@
             `).join('');
         }
 
+        function showToast() {
+            const toast = document.getElementById("toast");
+            toast.className = "show";
+            // Disappear after 500ms
+            setTimeout(() => { 
+                toast.className = toast.className.replace("show", ""); 
+            }, 500);
+        }
+
         async function copyNote(text) {
             try {
                 await navigator.clipboard.writeText(text);
-                alert('Note copied to clipboard!');
+                showToast();
             } catch (err) {
-                alert('Failed to copy');
+                console.error('Failed to copy', err);
             }
         }
 
